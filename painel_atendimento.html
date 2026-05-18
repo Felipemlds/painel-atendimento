@@ -503,6 +503,13 @@ async function loadData() {
 
     document.getElementById('last-updated').textContent =
       '↻ Última leitura: ' + new Date().toLocaleString('pt-BR');
+
+    // Auto-refresh a cada 60 minutos
+    if (window._autoRefreshTimer) clearInterval(window._autoRefreshTimer);
+    window._autoRefreshTimer = setInterval(() => {
+      loadData();
+    }, 5 * 60 * 1000);
+
   } catch(e) {
     console.error(e);
     document.getElementById('loading').style.display = 'none';
@@ -745,12 +752,27 @@ window.addEventListener('load', async () => {
     const response = await msalInstance.handleRedirectPromise();
     if (response) {
       account = response.account;
+      if (!account.username.toLowerCase().endsWith('@ademicon.com.br')) {
+        await msalInstance.logoutRedirect();
+        document.getElementById('login-screen').innerHTML = `
+          <div style="text-align:center; padding:40px;">
+            <div style="font-size:48px;">🚫</div>
+            <h2 style="color:#8B0000; margin:16px 0 8px;">Acesso negado</h2>
+            <p style="color:#666;">Apenas contas <strong>@ademicon.com.br</strong> têm acesso a este painel.</p>
+          </div>`;
+        document.getElementById('login-screen').style.display = 'flex';
+        return;
+      }
       showApp();
       return;
     }
     const accounts = msalInstance.getAllAccounts();
     if (accounts.length > 0) {
       account = accounts[0];
+      if (!account.username.toLowerCase().endsWith('@ademicon.com.br')) {
+        await msalInstance.logoutRedirect();
+        return;
+      }
       showApp();
     }
   } catch(e) { console.error(e); }
