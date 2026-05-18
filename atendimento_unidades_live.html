@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Atendimento por Unidade — Expansão de Marca</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/msal.js/2.38.3/msal-browser.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --vinho:   #7A1315;
+    --verm:    #D03025;
+    --verm2:   #FF0000;
+    --preto:   #231F20;
+    --cinza-e: #414042;
+    --cinza-c: #DCDDDE;
+    --branco:  #FFFFFF;
+    --bg:      #f4f4f4;
+    --card-bg: #FFFFFF;
+    --border:  #DCDDDE;
+    --muted:   #888;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--preto); font-family:'DM Sans',sans-serif; min-height:100vh; }
+
+  /* ── LOGIN SCREEN ─────────────────────────────────────────────── */
+  #login-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--vinho);
+  }
+  .login-box {
+    background: var(--branco);
+    border-radius: 20px;
+    padding: 48px 40px;
+    max-width: 440px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.3);
+  }
+  .login-logo {
+    width: 64px; height: 64px;
+    background: var(--vinho);
+    border-radius: 16px;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 24px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 800; font-size: 1.4rem;
+    color: var(--branco);
+  }
+  .login-box h1 { font-family:'Syne',sans-serif; font-size:1.5rem; font-weight:800; color:var(--preto); }
+  .login-box p { margin-top:10px; color:var(--cinza-e); font-size:0.9rem; line-height:1.5; }
+  .btn-login {
+    margin-top: 28px;
+    width: 100%;
+    padding: 14px;
+    background: var(--verm);
+    color: var(--branco);
+    border: none;
+    border-radius: 12px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700; font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .btn-login:hover { background: var(--vinho); }
+  .login-note { margin-top:16px; font-size:0.75rem; color:var(--muted); }
+
+  /* ── CONFIG BANNER (first-time setup) ────────────────────────── */
+  #config-banner {
+    background: #fff8e1;
+    border-left: 4px solid #f9a825;
+    padding: 14px 20px;
+    font-size: 0.85rem;
+    color: var(--cinza-e);
+    display: none;
+  }
+  #config-banner strong { color: var(--preto); }
+  #config-banner a { color: var(--verm); }
+
+
+  /* ── TOPBAR ──────────────────────────────────────────────────────── */
+  .topbar {
+    background: var(--branco);
+    border-bottom: 1px solid var(--cinza-c);
+    padding: 10px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .topbar-logo { height: 34px; width: auto; display: block; }
+  .topbar-tagline { font-size: 0.7rem; color: var(--cinza-e); letter-spacing: 0.06em; text-transform: uppercase; }
+
+  /* ── HEADER ───────────────────────────────────────────────────── */
+  #app { display:none; }
+  header {
+    background: var(--vinho);
+    color: var(--branco);
+    padding: 28px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .header-left h1 { font-family:'Syne',sans-serif; font-size:clamp(1.3rem,2.5vw,2rem); font-weight:800; }
+  .header-left h1 span { color: var(--cinza-c); font-weight:400; font-size:0.6em; display:block; margin-bottom:2px; letter-spacing:0.05em; }
+  .header-right { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .stat { text-align:center; }
+  .stat-num { font-family:'Syne',sans-serif; font-size:1.6rem; font-weight:800; line-height:1; }
+  .stat-label { font-size:0.7rem; text-transform:uppercase; letter-spacing:0.08em; opacity:0.7; margin-top:2px; }
+  .btn-refresh {
+    padding: 8px 18px;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 8px;
+    color: var(--branco);
+    font-family: 'Syne', sans-serif;
+    font-weight: 700; font-size: 0.8rem;
+    cursor: pointer;
+    transition: background 0.2s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .btn-refresh:hover { background: rgba(255,255,255,0.25); }
+  .btn-logout {
+    padding: 6px 14px;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 8px;
+    color: rgba(255,255,255,0.6);
+    font-size: 0.75rem; cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-logout:hover { border-color:white; color:white; }
+  .user-name { font-size:0.8rem; opacity:0.7; }
+
+  /* ── CONTROLS ─────────────────────────────────────────────────── */
+  .controls {
+    padding: 16px 40px;
+    background: var(--branco);
+    border-bottom: 1px solid var(--border);
+    display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+    position: sticky; top:0; z-index:100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .search-wrap { position:relative; flex:1; min-width:200px; max-width:380px; }
+  .search-wrap svg { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--muted); pointer-events:none; }
+  input[type="text"] {
+    width:100%; background:var(--bg); border:1px solid var(--border);
+    border-radius:8px; padding:9px 12px 9px 38px;
+    color:var(--preto); font-family:'DM Sans',sans-serif; font-size:0.9rem;
+    outline:none; transition:border-color 0.2s;
+  }
+  input[type="text"]:focus { border-color:var(--verm); }
+  input[type="text"]::placeholder { color:var(--muted); }
+  .bu-filters { display:flex; gap:6px; flex-wrap:wrap; }
+  .bu-btn {
+    padding:6px 12px; border-radius:6px; border:1.5px solid var(--border);
+    background:transparent; color:var(--cinza-e);
+    font-family:'Syne',sans-serif; font-size:0.72rem; font-weight:700;
+    letter-spacing:0.06em; cursor:pointer; transition:all 0.15s;
+  }
+  .bu-btn:hover { border-color:var(--verm); color:var(--verm); }
+  .bu-btn.active { background:var(--verm); border-color:var(--verm); color:var(--branco); }
+  .result-count { margin-left:auto; font-size:0.8rem; color:var(--muted); white-space:nowrap; }
+
+  /* ── CARDS GRID ───────────────────────────────────────────────── */
+  main { padding:28px 40px; display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:18px; }
+
+  .analyst-card {
+    background:var(--card-bg); border:1px solid var(--border);
+    border-radius:14px; overflow:hidden;
+    box-shadow:0 2px 8px rgba(0,0,0,0.05);
+    transition:transform 0.2s, box-shadow 0.2s;
+  }
+  .analyst-card:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,0.1); }
+  .analyst-card.hidden { display:none; }
+
+  .card-header { padding:18px 20px 14px; border-bottom:1px solid var(--border); display:flex; align-items:flex-start; gap:14px; }
+  .avatar { width:42px; height:42px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-family:'Syne',sans-serif; font-size:1rem; font-weight:800; flex-shrink:0; color:var(--branco); }
+  .card-info { flex:1; min-width:0; }
+  .card-name { font-family:'Syne',sans-serif; font-size:1rem; font-weight:700; color:var(--preto); }
+  .card-email { font-size:0.73rem; color:var(--muted); margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .card-email a { color:inherit; text-decoration:none; }
+  .card-email a:hover { color:var(--verm); }
+  .bu-tag { padding:3px 10px; border-radius:6px; font-family:'Syne',sans-serif; font-size:0.68rem; font-weight:700; letter-spacing:0.06em; color:var(--branco); flex-shrink:0; }
+
+  .manager-row { padding:10px 20px; background:#fafafa; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .mgr-label { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--muted); flex-shrink:0; }
+  .mgr-name { font-weight:600; font-size:0.85rem; color:var(--preto); }
+  .mgr-email { font-size:0.72rem; color:var(--muted); margin-left:auto; }
+  .mgr-email a { color:inherit; text-decoration:none; }
+  .mgr-email a:hover { color:var(--verm); }
+
+  .units-section { padding:14px 20px 16px; }
+  .units-toggle { display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none; }
+  .units-label { font-size:0.68rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--muted); }
+  .units-badge { background:var(--bg); border:1px solid var(--border); border-radius:20px; padding:2px 10px; font-size:0.7rem; font-family:'Syne',sans-serif; font-weight:700; color:var(--cinza-e); }
+  .units-list { margin-top:10px; display:flex; flex-direction:column; gap:3px; max-height:190px; overflow-y:auto; scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
+  .units-list::-webkit-scrollbar { width:4px; }
+  .units-list::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+  .unit-row { display:flex; align-items:center; gap:8px; padding:4px 6px; border-radius:5px; transition:background 0.1s; }
+  .unit-row:hover { background:var(--bg); }
+  .unit-row.highlight { background:#ffeaea; }
+  .unit-name { font-size:0.8rem; color:var(--preto); line-height:1.3; }
+  .unit-name mark { background:rgba(208,48,37,0.15); color:var(--verm); border-radius:2px; padding:0 1px; }
+
+  /* ── LOADING / ERROR ──────────────────────────────────────────── */
+  #loading {
+    display:none; text-align:center; padding:80px 20px;
+    grid-column:1/-1;
+  }
+  .spinner { width:40px; height:40px; border:3px solid var(--border); border-top-color:var(--verm); border-radius:50%; animation:spin 0.8s linear infinite; margin:0 auto 16px; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .no-results { grid-column:1/-1; text-align:center; padding:60px 20px; color:var(--muted); }
+  .no-results strong { font-family:'Syne',sans-serif; font-size:1.1rem; color:var(--preto); display:block; margin-bottom:6px; }
+
+  #last-updated { font-size:0.72rem; color:var(--muted); padding:8px 40px 0; }
+
+  /* ── CONFIG MODAL ─────────────────────────────────────────────── */
+  #config-modal {
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5);
+    z-index:999; align-items:center; justify-content:center;
+  }
+  #config-modal.open { display:flex; }
+  .modal-box { background:var(--branco); border-radius:16px; padding:36px; max-width:480px; width:90%; }
+  .modal-box h2 { font-family:'Syne',sans-serif; font-size:1.2rem; font-weight:800; color:var(--vinho); margin-bottom:8px; }
+  .modal-box p { font-size:0.85rem; color:var(--cinza-e); margin-bottom:20px; line-height:1.5; }
+  .modal-box label { font-size:0.8rem; font-weight:600; color:var(--preto); display:block; margin-bottom:4px; }
+  .modal-box input[type="text"] { padding:10px 12px; margin-bottom:14px; }
+  .modal-box .steps { background:var(--bg); border-radius:8px; padding:14px 16px; margin-bottom:20px; }
+  .modal-box .steps ol { padding-left:18px; }
+  .modal-box .steps li { font-size:0.8rem; color:var(--cinza-e); margin-bottom:6px; line-height:1.4; }
+  .modal-box .steps li a { color:var(--verm); }
+  .btn-save { width:100%; padding:12px; background:var(--verm); color:var(--branco); border:none; border-radius:10px; font-family:'Syne',sans-serif; font-weight:700; font-size:0.95rem; cursor:pointer; transition:background 0.2s; }
+  .btn-save:hover { background:var(--vinho); }
+
+  @media(max-width:600px) { header,.controls,main { padding-left:16px; padding-right:16px; } }
+</style>
+</head>
+<body>
+
+<!-- ── CONFIG MODAL ──────────────────────────────────────────────────── -->
+<div id="config-modal">
+  <div class="modal-box">
+    <h2>⚙️ Configuração inicial</h2>
+    <p>Para conectar ao seu arquivo do OneDrive, você precisa de um <strong>Client ID</strong> do Azure AD. Faça isso uma única vez em ~5 minutos:</p>
+    <div class="steps">
+      <ol>
+        <li>Acesse <a href="https://portal.azure.com" target="_blank">portal.azure.com</a> com sua conta Ademicon</li>
+        <li>Busque <strong>Registros de aplicativo</strong> → <strong>Novo registro</strong></li>
+        <li>Nome: <em>Analistas Expansão</em> | Tipo: <em>Contas apenas nesta organização</em></li>
+        <li>URI de Redirecionamento: <strong>Aplicativo de página única (SPA)</strong> → cole a URL desta página</li>
+        <li>Após criar: copie o <strong>ID do aplicativo (cliente)</strong></li>
+        <li>Vá em <strong>Permissões de API</strong> → Adicionar → Microsoft Graph → <em>Files.Read</em> (delegada)</li>
+      </ol>
+    </div>
+    <label>Client ID (Application ID):</label>
+    <input type="text" id="input-client-id" value="17f34946-4072-4f60-ad59-442c4b6e3c4b">
+    <label>Nome do arquivo no OneDrive (exatamente como está salvo):</label>
+    <input type="text" id="input-filename" value="analistas bu.xlsx">
+    <label>Nome da aba no Excel:</label>
+    <input type="text" id="input-sheet" value="unidades-analistas">
+    <button class="btn-save" onclick="saveConfig()">Salvar e conectar</button>
+  </div>
+</div>
+
+<!-- ── LOGIN SCREEN ──────────────────────────────────────────────────── -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">AD</div>
+    <h1>Atendimento por Unidade</h1>
+    <p>Painel da Expansão de Marca — conectado ao seu arquivo OneDrive.<br>Faça login com sua conta Ademicon para continuar.</p>
+    <button class="btn-login" onclick="startLogin()">🔑 Entrar com conta Microsoft</button>
+    <p class="login-note">Seus dados não saem da organização. Acesso somente leitura ao arquivo Excel.</p>
+    <p style="margin-top:12px; font-size:0.72rem; color:#bbb;">
+      <a href="#" onclick="document.getElementById('config-modal').classList.add('open'); return false;" style="color:#bbb;">⚙️ Configurar Client ID</a>
+    </p>
+  </div>
+</div>
+
+<!-- ── APP ───────────────────────────────────────────────────────────── -->
+<div id="app">
+
+  <header>
+    <div class="header-left">
+      <h1><span>ADEMICON — Expansão de Marca</span>Atendimento por Unidade</h1>
+    </div>
+    <div class="header-right">
+      <div class="stat"><div class="stat-num" id="stat-units">—</div><div class="stat-label">Unidades</div></div>
+      <div class="stat"><div class="stat-num" id="stat-analysts">—</div><div class="stat-label">Analistas</div></div>
+      <div class="stat"><div class="stat-num" id="stat-bus">—</div><div class="stat-label">BUs</div></div>
+      <button class="btn-refresh" onclick="loadData()">↻ Atualizar</button>
+      <span class="user-name" id="user-name"></span>
+      <button class="btn-logout" onclick="logout()">Sair</button>
+    </div>
+  </header>
+
+  <div id="last-updated"></div>
+
+  <div class="controls">
+    <div class="search-wrap">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" id="search" placeholder="Buscar por unidade, analista ou gerente…" oninput="filterAll()">
+    </div>
+    <div class="bu-filters" id="bu-filters">
+      <button class="bu-btn active" data-bu="all" onclick="setBU(this)">Todas</button>
+    </div>
+    <span class="result-count" id="result-count"></span>
+  </div>
+
+  <main id="cards-container">
+    <div id="loading">
+      <div class="spinner"></div>
+      <p style="color:var(--muted);font-size:0.9rem">Lendo o arquivo do OneDrive…</p>
+    </div>
+  </main>
+
+</div>
+
+<script>
+// ── CONFIGURATION ──────────────────────────────────────────────────────────
+const CONFIG_KEY = 'ademicon_exp_config';
+
+const DEFAULT_CONFIG = {
+  clientId: '17f34946-4072-4f60-ad59-442c4b6e3c4b',
+  filename: 'analistas bu.xlsx',
+  sheet: 'unidades-analistas'
+};
+
+function getConfig() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(CONFIG_KEY)) || {};
+    return { ...DEFAULT_CONFIG, ...stored };
+  } catch(e) { return DEFAULT_CONFIG; }
+}
+
+function saveConfig() {
+  const clientId = document.getElementById('input-client-id').value.trim();
+  const filename  = document.getElementById('input-filename').value.trim();
+  const sheet     = document.getElementById('input-sheet').value.trim();
+  if (!clientId) { alert('Por favor, insira o Client ID.'); return; }
+  localStorage.setItem(CONFIG_KEY, JSON.stringify({ clientId, filename, sheet }));
+  document.getElementById('config-modal').classList.remove('open');
+  window.location.reload();
+}
+
+// ── MSAL SETUP ─────────────────────────────────────────────────────────────
+let msalInstance = null;
+let account = null;
+
+function initMSAL() {
+  const cfg = getConfig();
+  msalInstance = new msal.PublicClientApplication({
+    auth: {
+      clientId: cfg.clientId,
+      authority: 'https://login.microsoftonline.com/27b2b528-c184-4635-ad0a-0d1df2a8eb04',
+      redirectUri: 'https://ademiconsa.sharepoint.com/sites/backofficeredeexpansao/Shared%20Documents/atendimento_unidades_live%20(2).html',
+    },
+    cache: { cacheLocation: 'sessionStorage' }
+  });
+  return true;
+}
+
+async function startLogin() {
+  if (!initMSAL()) return;
+  try {
+    await msalInstance.loginRedirect({ scopes: ['Files.Read', 'User.Read'] });
+  } catch(e) {
+    console.error(e);
+    alert('Erro ao fazer login: ' + e.message);
+  }
+}
+
+async function getToken() {
+  const resp = await msalInstance.acquireTokenSilent({
+    scopes: ['Files.Read'],
+    account
+  }).catch(() => msalInstance.acquireTokenRedirect({ scopes: ['Files.Read'], account }));
+  return resp ? resp.accessToken : null;
+}
+
+function logout() {
+  msalInstance.logoutRedirect({ account });
+}
+
+function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('user-name').textContent = account.name || account.username;
+  loadData();
+}
+
+// ── LOAD DATA FROM ONEDRIVE ────────────────────────────────────────────────
+const BU_COLORS = { BU1:'#D03025', BU2:'#7A1315', BU3:'#414042', BU4:'#888888', BU5:'#AAAAAA', BU6:'#C0392B' };
+// Extra cores caso haja mais BUs
+const EXTRA_COLORS = ['#922B21','#5D6D7E','#1A5276','#145A32','#7D6608','#6E2F8A'];
+let allData = {};
+let activeBU = 'all';
+
+async function loadData() {
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('cards-container').querySelectorAll('.analyst-card').forEach(c => c.remove());
+  document.getElementById('cards-container').querySelector('#loading') || document.getElementById('cards-container').appendChild(document.getElementById('loading'));
+  document.getElementById('loading').style.display = 'block';
+
+  try {
+    const cfg = getConfig();
+    const token = await getToken();
+    const filename = encodeURIComponent(cfg.filename || 'analistas bu.xlsx');
+    const sheet    = encodeURIComponent(cfg.sheet    || 'unidades-analistas');
+
+    const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${filename}:/workbook/worksheets/${sheet}/usedRange`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) throw new Error(`Erro ${res.status}: ${await res.text()}`);
+
+    const json = await res.json();
+    parseAndRender(json.values);
+
+    document.getElementById('last-updated').textContent =
+      '↻ Última leitura: ' + new Date().toLocaleString('pt-BR');
+  } catch(e) {
+    console.error(e);
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('cards-container').innerHTML =
+      `<div class="no-results"><strong>Erro ao carregar dados</strong>${e.message}<br><br><small>Verifique o nome do arquivo e da aba no <a href="#" onclick="document.getElementById('config-modal').classList.add('open'); return false;">configurações</a>.</small></div>`;
+  }
+}
+
+function parseAndRender(rows) {
+  if (!rows || rows.length < 2) return;
+
+  // Map headers
+  const headers = rows[0].map(h => String(h).trim());
+  const idx = {};
+  headers.forEach((h, i) => {
+    const hl = h.toLowerCase();
+    if (hl.includes('loja') || (hl.includes('unidade') && !hl.includes('cd'))) idx.loja = i;
+    else if (hl.includes('cd') || hl === 'cdunidade') idx.cod = i;
+    else if (hl === 'bu' || hl.startsWith('bu-') || hl.startsWith('bu ')) idx.bu = i;
+    else if (hl.includes('analista') && !hl.includes('mail') && !hl.includes('@')) idx.analista = i;
+    else if ((hl.includes('mail') || hl.includes('@')) && hl.includes('analista')) idx.emailA = i;
+    else if (hl.includes('gerente') && !hl.includes('mail') && !hl.includes('@')) idx.gerente = i;
+    else if ((hl.includes('mail') || hl.includes('@')) && hl.includes('gerente')) idx.emailG = i;
+    else if (hl.includes('dt fim') || hl.includes('fim') || hl.includes('data fim') || hl === 'g') idx.dtFim = i;
+  });
+
+  // Fallback by position if headers not recognized
+  if (idx.loja === undefined) idx.loja = 0;
+  if (idx.cod  === undefined) idx.cod  = 1;
+  if (idx.bu   === undefined) idx.bu   = 2;
+  if (idx.analista === undefined) idx.analista = 3;
+  if (idx.emailA   === undefined) idx.emailA   = 4;
+  if (idx.gerente  === undefined) idx.gerente  = 6;
+  if (idx.emailG   === undefined) idx.emailG   = 7;
+  if (idx.dtFim    === undefined) idx.dtFim    = 6; // column G (index 6)
+
+  allData = {};
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    if (!r[idx.analista]) continue;
+    // Only active units: column G (Dt fim) must be empty
+    const dtFim = r[idx.dtFim];
+    if (dtFim !== null && dtFim !== undefined && String(dtFim).trim() !== '') continue;
+    const bu       = String(r[idx.bu] || '').trim();
+    const analista = String(r[idx.analista] || '').trim();
+    const emailA   = String(r[idx.emailA]   || '').trim();
+    const gerente  = String(r[idx.gerente]  || '').trim();
+    const emailG   = String(r[idx.emailG]   || '').trim();
+    const loja     = String(r[idx.loja]     || '').trim();
+
+    if (!analista || !loja) continue;
+
+    if (!allData[analista]) {
+      allData[analista] = { email: emailA, gerente, emailG, bus: new Set(), unidades: [] };
+    }
+    allData[analista].bus.add(bu);
+    allData[analista].unidades.push(loja);
+  }
+
+  // Assign BU (primary = most frequent)
+  for (const a in allData) {
+    allData[a].bus = [...allData[a].bus];
+    allData[a].bu  = allData[a].bus[0];
+  }
+
+  buildBUFilters();
+  buildCards();
+
+  const totalUnits = Object.values(allData).reduce((s,v) => s + v.unidades.length, 0);
+  const allBUs = new Set(Object.values(allData).flatMap(v => v.bus));
+  document.getElementById('stat-units').textContent    = totalUnits;
+  document.getElementById('stat-analysts').textContent = Object.keys(allData).length;
+  document.getElementById('stat-bus').textContent      = allBUs.size;
+
+  document.getElementById('loading').style.display = 'none';
+}
+
+function getBUColor(bu, index) {
+  return BU_COLORS[bu] || EXTRA_COLORS[index % EXTRA_COLORS.length] || '#888';
+}
+
+function buildBUFilters() {
+  const allBUs = [...new Set(Object.values(allData).flatMap(v => v.bus))].sort();
+  const wrap = document.getElementById('bu-filters');
+  wrap.innerHTML = '<button class="bu-btn active" data-bu="all" onclick="setBU(this)">Todas</button>';
+  allBUs.forEach((bu, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'bu-btn';
+    btn.dataset.bu = bu;
+    btn.textContent = bu;
+    btn.onclick = function(){ setBU(this); };
+    wrap.appendChild(btn);
+  });
+}
+
+function buildCards() {
+  const container = document.getElementById('cards-container');
+  container.querySelectorAll('.analyst-card').forEach(c => c.remove());
+  const allBUs = [...new Set(Object.values(allData).flatMap(v => v.bus))].sort();
+  const buIndex = {};
+  allBUs.forEach((bu, i) => buIndex[bu] = i);
+
+  const sorted = Object.entries(allData).sort((a, b) => a[1].bu.localeCompare(b[1].bu) || a[0].localeCompare(b[0]));
+
+  sorted.forEach(([analista, info]) => {
+    const color = getBUColor(info.bu, buIndex[info.bu] || 0);
+    const card = document.createElement('div');
+    card.className = 'analyst-card';
+    card.dataset.bu = info.bu;
+    card.dataset.busAll = info.bus.join(' ');
+    card.dataset.analista = analista.toLowerCase();
+    card.dataset.gerente = info.gerente.toLowerCase();
+    card.dataset.units = info.unidades.join(' ').toLowerCase();
+    const id = 'card-' + analista.replace(/\s/g,'');
+    card.id = id;
+    const initials = analista.slice(0,2).toUpperCase();
+    card.innerHTML = `
+      <div class="card-header">
+        <div class="avatar" style="background:${color}">${initials}</div>
+        <div class="card-info">
+          <div class="card-name">${analista}</div>
+          <div class="card-email"><a href="mailto:${info.email}">${info.email}</a></div>
+        </div>
+        <div class="bu-tag" style="background:${color}">${info.bus.join(' · ')}</div>
+      </div>
+      <div class="manager-row">
+        <span class="mgr-label">Gerente</span>
+        <span class="mgr-name">${info.gerente}</span>
+        <span class="mgr-email"><a href="mailto:${info.emailG}">${info.emailG}</a></span>
+      </div>
+      <div class="units-section">
+        <div class="units-toggle" onclick="toggleList('${id}')">
+          <span class="units-label">Unidades atendidas</span>
+          <span class="units-badge">${info.unidades.length}</span>
+        </div>
+        <div class="units-list" id="list-${id}">
+          ${info.unidades.map(u => `<div class="unit-row"><span class="unit-name">${u}</span></div>`).join('')}
+        </div>
+      </div>`;
+    container.appendChild(card);
+  });
+
+  filterAll();
+}
+
+function toggleList(cardId) {
+  const list = document.getElementById('list-' + cardId);
+  list.style.display = list.style.display === 'none' ? 'flex' : 'none';
+}
+
+function setBU(btn) {
+  activeBU = btn.dataset.bu;
+  document.querySelectorAll('.bu-btn').forEach(b => {
+    b.classList.remove('active');
+    b.style.background = '';
+    b.style.borderColor = '';
+    b.style.color = '';
+  });
+  btn.classList.add('active');
+  if (activeBU !== 'all') {
+    const color = getBUColor(activeBU, 0);
+    btn.style.background = color;
+    btn.style.borderColor = color;
+    btn.style.color = '#fff';
+  }
+  filterAll();
+}
+
+function normalize(s) { return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+
+function highlight(text, term) {
+  if (!term) return text;
+  const idx = normalize(text).indexOf(normalize(term));
+  if (idx === -1) return text;
+  return text.slice(0,idx) + '<mark>' + text.slice(idx, idx+term.length) + '</mark>' + text.slice(idx+term.length);
+}
+
+function filterAll() {
+  const term = document.getElementById('search').value.trim();
+  const normTerm = normalize(term);
+  const cards = document.querySelectorAll('.analyst-card');
+  let visible = 0;
+
+  cards.forEach(card => {
+    const buMatch = activeBU === 'all' || card.dataset.busAll.includes(activeBU);
+    const textMatch = !normTerm ||
+      normalize(card.dataset.analista).includes(normTerm) ||
+      normalize(card.dataset.gerente).includes(normTerm) ||
+      normalize(card.dataset.units).includes(normTerm);
+
+    if (buMatch && textMatch) {
+      card.classList.remove('hidden');
+      visible++;
+      card.querySelectorAll('.unit-row').forEach(row => {
+        const span = row.querySelector('.unit-name');
+        const t = span.textContent;
+        const matches = normTerm && normalize(t).includes(normTerm);
+        row.classList.toggle('highlight', matches);
+        span.innerHTML = term ? highlight(t, term) : t;
+      });
+      if (normTerm && normalize(card.dataset.units).includes(normTerm)) {
+        document.getElementById('list-' + card.id).style.display = 'flex';
+      }
+    } else {
+      card.classList.add('hidden');
+    }
+  });
+
+  const rc = document.getElementById('result-count');
+  rc.textContent = (normTerm || activeBU !== 'all') ? `${visible} resultado${visible !== 1 ? 's' : ''}` : '';
+
+  let noRes = document.getElementById('no-results-msg');
+  if (visible === 0 && Object.keys(allData).length > 0) {
+    if (!noRes) {
+      noRes = document.createElement('div');
+      noRes.id = 'no-results-msg';
+      noRes.className = 'no-results';
+      noRes.innerHTML = '<strong>Nenhum resultado</strong>Tente buscar por nome da unidade, analista ou gerente.';
+      document.getElementById('cards-container').appendChild(noRes);
+    }
+  } else if (noRes) noRes.remove();
+}
+
+// ── INIT ───────────────────────────────────────────────────────────────────
+window.addEventListener('load', async () => {
+  if (!initMSAL()) return;
+
+  try {
+    const response = await msalInstance.handleRedirectPromise();
+    if (response) {
+      account = response.account;
+      showApp();
+      return;
+    }
+    const accounts = msalInstance.getAllAccounts();
+    if (accounts.length > 0) {
+      account = accounts[0];
+      showApp();
+    }
+  } catch(e) { console.error(e); }
+});
+</script>
+</body>
+</html>
