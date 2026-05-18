@@ -441,7 +441,7 @@ async function initMSAL() {
 async function startLogin() {
   try {
     await initMSAL();
-    await msalInstance.loginRedirect({ scopes: ['Files.Read', 'Files.Read.All', 'Sites.Read.All', 'User.Read'] });
+    await msalInstance.loginRedirect({ scopes: ['Files.Read', 'Files.Read.All', 'User.Read'] });
   } catch(e) {
     console.error(e);
     alert('Erro ao fazer login: ' + e.message);
@@ -487,8 +487,7 @@ async function loadData() {
     const sheet    = encodeURIComponent(cfg.sheet    || 'Base Uni_Analistas');
     const sheetEmail = encodeURIComponent('Analistas_email');
 
-    // Buscar pelo SharePoint — acessível por qualquer usuário com permissão
-    const siteId = 'ademiconsa.sharepoint.com,backofficeredeexpansao';
+    // Buscar pelo SharePoint via sharedWithMe / path direto
     const baseUrl = `https://graph.microsoft.com/v1.0/sites/ademiconsa.sharepoint.com:/sites/backofficeredeexpansao:/drive/root:/${filename}:`;
 
     const url1 = `${baseUrl}/workbook/worksheets/${sheet}/usedRange`;
