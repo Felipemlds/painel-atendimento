@@ -487,14 +487,22 @@ async function loadData() {
     const sheet    = encodeURIComponent(cfg.sheet    || 'Base Uni_Analistas');
     const sheetEmail = encodeURIComponent('Analistas_email');
 
-    // Carregar aba principal
-    const url1 = `https://graph.microsoft.com/v1.0/me/drive/root:/${filename}:/workbook/worksheets/${sheet}/usedRange`;
+    // Buscar pelo ID fixo do arquivo (OneDrive do Felipe)
+    const fileId = '44EE5B67027042F-A2D2-A5E1DEFB7E11';
+    const ownerUserId = 'felipe_santos_ademicon_com_br';
+
+    // Carregar aba principal via shares API (funciona para qualquer usuário com permissão)
+    const shareUrl = 'https://ademiconsa-my.sharepoint.com/:x:/g/personal/felipe_santos_ademicon_com_br/IQBnW-5EcAIvR6LSpeHe-34RASBLugz_wIln3vlV0f7RB8o';
+    const encodedUrl = btoa(shareUrl).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+    const baseUrl = `https://graph.microsoft.com/v1.0/shares/u!${encodedUrl}/driveItem`;
+
+    const url1 = `${baseUrl}/workbook/worksheets/${sheet}/usedRange`;
     const res1 = await fetch(url1, { headers: { Authorization: `Bearer ${token}` } });
     if (!res1.ok) throw new Error(`Erro ${res1.status}: ${await res1.text()}`);
     const json1 = await res1.json();
 
     // Carregar aba de e-mails
-    const url2 = `https://graph.microsoft.com/v1.0/me/drive/root:/${filename}:/workbook/worksheets/${sheetEmail}/usedRange`;
+    const url2 = `${baseUrl}/workbook/worksheets/${sheetEmail}/usedRange`;
     const res2 = await fetch(url2, { headers: { Authorization: `Bearer ${token}` } });
     if (!res2.ok) throw new Error(`Erro ${res2.status}: ${await res2.text()}`);
     const json2 = await res2.json();
