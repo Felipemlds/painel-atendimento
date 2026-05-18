@@ -351,22 +351,23 @@ function saveConfig() {
 let msalInstance = null;
 let account = null;
 
-function initMSAL() {
+async function initMSAL() {
   const cfg = getConfig();
   msalInstance = new msal.PublicClientApplication({
     auth: {
       clientId: cfg.clientId,
       authority: 'https://login.microsoftonline.com/27b2b528-c184-4635-ad0a-0d1df2a8eb04',
-      redirectUri: 'https://ademiconsa.sharepoint.com/sites/backofficeredeexpansao/Shared%20Documents/painel_atendimento.html',
+      redirectUri: 'https://felipemlds.github.io/painel-atendimento/painel_atendimento.html',
     },
     cache: { cacheLocation: 'sessionStorage' }
   });
+  await msalInstance.initialize();
   return true;
 }
 
 async function startLogin() {
-  if (!initMSAL()) return;
   try {
+    await initMSAL();
     await msalInstance.loginRedirect({ scopes: ['Files.Read', 'User.Read'] });
   } catch(e) {
     console.error(e);
@@ -646,9 +647,8 @@ function filterAll() {
 
 // ── INIT ───────────────────────────────────────────────────────────────────
 window.addEventListener('load', async () => {
-  if (!initMSAL()) return;
-
   try {
+    await initMSAL();
     const response = await msalInstance.handleRedirectPromise();
     if (response) {
       account = response.account;
