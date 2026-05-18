@@ -356,7 +356,22 @@ var st,ct,ut,lt,dt,ht,pt,gt,ft,mt=function(){function t(e,t,r){this.networkInter
 
   <header>
     <div class="header-left">
-      <h1><span>ADEMICON — Expansão de Marca</span>Atendimento por Unidade</h1>
+      <div style="display:flex; align-items:center; gap:20px;">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 44" style="height:36px;width:auto;">
+  <!-- Ícone casa -->
+  <rect x="0" y="0" width="44" height="44" rx="8" fill="#C0392B"/>
+  <!-- Telhado -->
+  <polyline points="5,22 22,8 39,22" fill="none" stroke="white" stroke-width="3" stroke-linejoin="round"/>
+  <!-- Corpo casa -->
+  <rect x="10" y="21" width="24" height="16" rx="1" fill="none" stroke="white" stroke-width="2.5"/>
+  <!-- Porta -->
+  <rect x="18" y="28" width="8" height="9" rx="1" fill="none" stroke="white" stroke-width="2"/>
+  <!-- Texto ADEMICON -->
+  <text x="52" y="20" font-family="Arial Black, Arial" font-weight="900" font-size="13" fill="white" letter-spacing="0.5">ADEMICON</text>
+  <text x="52" y="33" font-family="Arial, sans-serif" font-weight="400" font-size="7.5" fill="rgba(255,255,255,0.75)" letter-spacing="0.3">consórcio e investimento</text>
+</svg>
+  <h1>Atendimento por Unidade</h1>
+</div>
     </div>
     <div class="header-right">
       <div class="stat"><div class="stat-num" id="stat-units">—</div><div class="stat-label">Unidades</div></div>
@@ -481,14 +496,22 @@ async function loadData() {
     const cfg = getConfig();
     const token = await getToken();
     const filename = encodeURIComponent(cfg.filename || 'analistas bu.xlsx');
-    const sheet    = encodeURIComponent(cfg.sheet    || 'unidades-analistas');
+    const sheet    = encodeURIComponent(cfg.sheet    || 'Base Uni_Analistas');
+    const sheetEmail = encodeURIComponent('Analistas_email');
 
-    const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${filename}:/workbook/worksheets/${sheet}/usedRange`;
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-    if (!res.ok) throw new Error(`Erro ${res.status}: ${await res.text()}`);
+    // Carregar aba principal
+    const url1 = `https://graph.microsoft.com/v1.0/me/drive/root:/${filename}:/workbook/worksheets/${sheet}/usedRange`;
+    const res1 = await fetch(url1, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res1.ok) throw new Error(`Erro ${res1.status}: ${await res1.text()}`);
+    const json1 = await res1.json();
 
-    const json = await res.json();
-    parseAndRender(json.values);
+    // Carregar aba de e-mails
+    const url2 = `https://graph.microsoft.com/v1.0/me/drive/root:/${filename}:/workbook/worksheets/${sheetEmail}/usedRange`;
+    const res2 = await fetch(url2, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res2.ok) throw new Error(`Erro ${res2.status}: ${await res2.text()}`);
+    const json2 = await res2.json();
+
+    parseAndRender(json1.values, json2.values);
 
     document.getElementById('last-updated').textContent =
       '↻ Última leitura: ' + new Date().toLocaleString('pt-BR');
@@ -500,33 +523,44 @@ async function loadData() {
   }
 }
 
-function parseAndRender(rows) {
+function parseAndRender(rows, emailRows) {
   if (!rows || rows.length < 2) return;
 
-  // Map headers
+  // Montar mapa de e-mails e gerentes a partir da aba Analistas_email
+  // Colunas: A=Analista, B=E-mail analista, C=E-mail Gerente, D=Gerente
+  const emailMap = {};
+  if (emailRows && emailRows.length > 1) {
+    for (let i = 1; i < emailRows.length; i++) {
+      const r = emailRows[i];
+      const nome = String(r[0] || '').trim();
+      if (nome) {
+        emailMap[nome.toLowerCase()] = {
+          emailA: String(r[1] || '').trim(),
+          emailG: String(r[2] || '').trim(),
+          gerente: String(r[3] || '').trim()
+        };
+      }
+    }
+  }
+
+  // Map headers da aba principal
+  // Colunas: A=LOJAS, B=vazio, C=CdUnidade, D=BU-nov, E=Analistas, F=Dt inicio, G=Dt fim
   const headers = rows[0].map(h => String(h).trim());
   const idx = {};
   headers.forEach((h, i) => {
     const hl = h.toLowerCase();
     if (hl.includes('loja') || (hl.includes('unidade') && !hl.includes('cd'))) idx.loja = i;
     else if (hl.includes('cd') || hl === 'cdunidade') idx.cod = i;
-    else if (hl === 'bu' || hl.startsWith('bu-') || hl.startsWith('bu ')) idx.bu = i;
+    else if (hl === 'bu' || hl.startsWith('bu-') || hl.startsWith('bu ') || hl.includes('bu-nov')) idx.bu = i;
     else if (hl.includes('analista') && !hl.includes('mail') && !hl.includes('@')) idx.analista = i;
-    else if ((hl.includes('mail') || hl.includes('@')) && hl.includes('analista')) idx.emailA = i;
-    else if (hl.includes('gerente') && !hl.includes('mail') && !hl.includes('@')) idx.gerente = i;
-    else if ((hl.includes('mail') || hl.includes('@')) && hl.includes('gerente')) idx.emailG = i;
-    else if (hl.includes('dt fim') || hl.includes('fim') || hl.includes('data fim') || hl === 'g') idx.dtFim = i;
+    else if (hl.includes('dt fim') || hl.includes('fim') || hl.includes('data fim')) idx.dtFim = i;
   });
 
-  // Fallback by position if headers not recognized
+  // Fallback by position
   if (idx.loja === undefined) idx.loja = 0;
-  if (idx.cod  === undefined) idx.cod  = 1;
-  if (idx.bu   === undefined) idx.bu   = 2;
-  if (idx.analista === undefined) idx.analista = 3;
-  if (idx.emailA   === undefined) idx.emailA   = 4;
-  if (idx.gerente  === undefined) idx.gerente  = 6;
-  if (idx.emailG   === undefined) idx.emailG   = 7;
-  if (idx.dtFim    === undefined) idx.dtFim    = 6; // column G (index 6)
+  if (idx.bu   === undefined) idx.bu   = 3;
+  if (idx.analista === undefined) idx.analista = 4;
+  if (idx.dtFim    === undefined) idx.dtFim    = 6;
 
   allData = {};
   for (let i = 1; i < rows.length; i++) {
@@ -537,9 +571,10 @@ function parseAndRender(rows) {
     if (dtFim !== null && dtFim !== undefined && String(dtFim).trim() !== '') continue;
     const bu       = String(r[idx.bu] || '').trim();
     const analista = String(r[idx.analista] || '').trim();
-    const emailA   = String(r[idx.emailA]   || '').trim();
-    const gerente  = String(r[idx.gerente]  || '').trim();
-    const emailG   = String(r[idx.emailG]   || '').trim();
+    const emailInfo = emailMap[analista.toLowerCase()] || {};
+    const emailA   = emailInfo.emailA || '';
+    const gerente  = emailInfo.gerente || '';
+    const emailG   = emailInfo.emailG || '';
     const loja     = String(r[idx.loja]     || '').trim();
 
     if (!analista || !loja) continue;
